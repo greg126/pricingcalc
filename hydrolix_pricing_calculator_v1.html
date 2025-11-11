@@ -1,0 +1,2427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydrolix Pricing Calculator v20.9.1</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@600;700&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #003366 0%, #36BDB1 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #003366 0%, #007C79 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .header h1 {
+            font-family: 'Inconsolata', monospace;
+            font-size: 1.5em;
+            margin: 0;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+        
+        .header-subtitle {
+            font-family: 'Inconsolata', monospace;
+            font-size: 0.7em;
+            opacity: 0.9;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            margin-top: 2px;
+        }
+        
+        .version-tag {
+            font-size: 0.85em;
+            opacity: 0.9;
+            font-family: 'Lato', sans-serif;
+            font-weight: 400;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 0;
+        }
+        
+        .sidebar {
+            background: #f8f9fa;
+            padding: 20px 15px;
+            border-right: 2px solid #dee2e6;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
+        .section-title {
+            font-family: 'Inconsolata', monospace;
+            font-size: 1.1em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #003366;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .input-field {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        .input-field label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.85em;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        .input-field input,
+        .input-field select {
+            flex: 1;
+            min-width: 0;
+            padding: 6px 8px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 0.85em;
+            transition: border-color 0.3s;
+        }
+        
+        .input-field small {
+            display: none;
+        }
+        
+        .input-field input:focus,
+        .input-field select:focus {
+            outline: none;
+            border-color: #36BDB1;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        
+        @media (max-width: 1200px) {
+            .pricing-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .pricing-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+        
+        .pricing-card.disabled {
+            opacity: 0.5;
+            background: repeating-linear-gradient(
+                45deg,
+                #f1f3f5,
+                #f1f3f5 10px,
+                #e9ecef 10px,
+                #e9ecef 20px
+            );
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .pricing-card.disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .pricing-card.disabled .pricing-card-title {
+            color: #adb5bd;
+        }
+        
+        .pricing-card.disabled .pricing-value {
+            color: #ced4da;
+        }
+        
+        .pricing-card.disabled::after {
+            content: 'Not Currently Supported';
+            white-space: pre;
+            text-align: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(108, 117, 125, 0.95);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.9em;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .pricing-card.disabled.high-volume::after {
+            content: 'Not Currently Supported\A>30TB on Akamai';
+        }
+        
+        .pricing-card {
+            position: relative;
+        }
+        
+        .pricing-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: #36BDB1;
+        }
+        
+        .pricing-card-title {
+            font-size: 1.4em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #0052CC;
+            border-bottom: 2px solid #00D4FF;
+            padding-bottom: 10px;
+        }
+        
+        .pricing-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .pricing-row.tco-section {
+            border-top: 2px dashed #dee2e6;
+            margin-top: 10px;
+            padding-top: 15px;
+            background: linear-gradient(to right, rgba(54, 189, 177, 0.05), transparent);
+        }
+        
+        .pricing-row.tco-total {
+            background: linear-gradient(to right, rgba(54, 189, 177, 0.1), transparent);
+            font-weight: 700;
+        }
+        
+        .pricing-row.tco-total .pricing-label {
+            color: #0052CC;
+            font-weight: 700;
+        }
+        
+        .pricing-row.tco-total .pricing-value {
+            color: #36BDB1;
+            font-size: 1.3em;
+        }
+        
+        .pricing-row:last-child {
+            border-bottom: none;
+            margin-top: 15px;
+            padding-top: 20px;
+            border-top: 3px solid #00D4FF;
+            font-size: 1.15em;
+        }
+        
+        .pricing-label {
+            color: #6c757d;
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+        
+        .pricing-value {
+            font-weight: 700;
+            color: #212529;
+            font-size: 1.05em;
+        }
+        
+        .pricing-row:last-child .pricing-value {
+            color: #36BDB1;
+            font-size: 1.2em;
+        }
+        
+        .comparison-section {
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 3px solid #dee2e6;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            .comparison-section {
+                margin-top: 15px;
+                padding-top: 15px;
+            }
+            
+            .comparison-table {
+                font-size: 0.75em;
+            }
+            
+            .comparison-table th,
+            .comparison-table td {
+                padding: 8px 6px;
+            }
+            
+            .debug-section {
+                margin-top: 15px;
+                padding: 12px;
+            }
+            
+            .debug-grid {
+                grid-template-columns: 1fr;
+                font-size: 0.7em;
+            }
+        }
+        
+        .comparison-table th,
+        .comparison-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 0.9em;
+        }
+        
+        .comparison-table th {
+            background: #0052CC;
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+        }
+        
+        .comparison-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .comparison-table .vendor-name {
+            font-weight: 700;
+            color: #0052CC;
+        }
+        
+        .comparison-table .price-cell {
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+        
+        .comparison-table .multiplier {
+            color: #dc3545;
+            font-weight: 700;
+        }
+        
+        .debug-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #00D4FF;
+        }
+        
+        .debug-section h3 {
+            color: #0052CC;
+            margin-bottom: 15px;
+        }
+        
+        .debug-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            font-size: 0.85em;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .debug-item {
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .debug-label {
+            color: #6c757d;
+            font-weight: 600;
+        }
+        
+        .debug-value {
+            color: #212529;
+            font-weight: 700;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-family: 'Lato', sans-serif;
+        }
+        
+        .alert-info {
+            background: #FDF5E8;
+            border-left: 4px solid #36BDB1;
+            color: #003366;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                border-right: none;
+                border-bottom: 2px solid #dee2e6;
+                max-height: none;
+            }
+            
+            .pricing-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .header h1 {
+                font-size: 1.5em;
+            }
+            
+            .header p {
+                font-size: 0.75em;
+            }
+            
+            .header img {
+                width: 50px !important;
+                height: 50px !important;
+            }
+            
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+            
+            .sidebar {
+                padding: 15px;
+            }
+            
+            .section-title {
+                font-size: 0.95em;
+            }
+            
+            .pricing-card {
+                padding: 12px;
+            }
+            
+            .pricing-card-title {
+                font-size: 0.95em;
+                margin-bottom: 10px;
+            }
+            
+            .pricing-row {
+                padding: 6px 0;
+            }
+            
+            .pricing-label {
+                font-size: 0.75em;
+            }
+            
+            .pricing-value {
+                font-size: 0.85em;
+            }
+        }
+    </style>
+</head>
+<body>
+        <div class="container">
+        <div class="header">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px;">
+                <img src="data:image/webp;base64,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" alt="Hydrolix Logo" style="width: 60px; height: 60px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
+                <div>
+                    <h1>HYDROLIX</h1>
+                    <div style="font-family: 'Inconsolata', monospace; font-size: 0.85em; opacity: 0.9; font-weight: 600; letter-spacing: 2px;">PRICING CALCULATOR</div>
+                </div>
+            </div>
+            <p style="font-size: 1em; opacity: 0.85; margin-top: 8px; font-family: 'Lato', sans-serif;">Version 20.9.1</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="sidebar">
+                <h3 class="section-title">Quote Information</h3>
+                
+                <div class="input-field">
+                    <label>Customer Name</label>
+                    <input type="text" id="customerName" placeholder="Enter customer name">
+                </div>
+                
+                <div class="input-field">
+                    <label>SFDC Opportunity</label>
+                    <input type="url" id="sfdcLink" placeholder="Salesforce opportunity URL">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px;">
+                    <button onclick="saveToURL()" style="padding: 8px 12px; background: linear-gradient(135deg, #36BDB1 0%, #007C79 100%); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85em;">
+                        📋 Copy Link
+                    </button>
+                    <button onclick="generateQuote()" style="padding: 8px 12px; background: linear-gradient(135deg, #003366 0%, #007C79 100%); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85em;">
+                        📄 Generate Quote
+                    </button>
+                </div>
+                
+                <h3 class="section-title">Customer Inputs</h3>
+                
+                <div class="input-field">
+                    <label>Cloud Provider</label>
+                    <select id="cloudProvider" onchange="calculate()">
+                        <option value="Akamai">Akamai</option>
+                        <option value="AWS US East">AWS US East</option>
+                        <option value="AWS Ireland">AWS Ireland</option>
+                        <option value="AWS Sao Paulo">AWS Sao Paulo</option>
+                        <option value="AWS Seoul">AWS Seoul</option>
+                        <option value="AWS Tokyo">AWS Tokyo</option>
+                        <option value="Azure">Azure</option>
+                        <option value="GCP Oregon">GCP Oregon</option>
+                        <option value="GCP Paris">GCP Paris</option>
+                        <option value="GCP Tokyo">GCP Tokyo</option>
+                    </select>
+                </div>
+                
+                <div class="input-field">
+                    <label>Ingest TB per Month</label>
+                    <input type="number" id="ingestTB" value="100" min="1" step="1" onchange="calculate()">
+                </div>
+                
+                <div class="input-field">
+                    <label>Retention (Months)</label>
+                    <input type="number" id="retention" value="15" min="1" max="36" step="1" onchange="calculate()">
+                </div>
+                
+                <div class="input-field">
+                    <label>Peak Queries per Minute</label>
+                    <input type="number" id="qpm" value="100" min="1" step="1" onchange="calculate()">
+                </div>
+                
+                <details style="margin-top: 25px; cursor: pointer;">
+                    <summary style="font-weight: 700; color: #003366; font-size: 1.05em; padding: 12px; background: #e9ecef; border-radius: 6px; user-select: none;">
+                        💵 BYOC Cloud $ Discounts
+                    </summary>
+                    <div style="margin-top: 15px; padding: 15px; background: white; border: 1px solid #dee2e6; border-radius: 6px;">
+                        <div class="input-field" style="margin-bottom: 15px;">
+                            <label>Customer Compute Discount (%)</label>
+                            <input type="number" id="computeDiscount" value="0" min="0" max="100" step="1" onchange="calculate()">
+                            <small style="color: #6c757d; font-size: 0.85em;">Applies to compute costs in BYOC/BYOS models</small>
+                        </div>
+                        
+                        <div class="input-field">
+                            <label>Customer Storage Discount (%)</label>
+                            <input type="number" id="storageDiscount" value="0" min="0" max="100" step="1" onchange="calculate()">
+                            <small style="color: #6c757d; font-size: 0.85em;">Applies to storage costs in BYOC/BYOS models</small>
+                        </div>
+                    </div>
+                </details>
+                
+                <details style="margin-top: 15px; cursor: pointer;">
+                    <summary style="font-weight: 700; color: #003366; font-size: 1.05em; padding: 12px; background: #e9ecef; border-radius: 6px; user-select: none;">
+                        ➕ Add-Ons (Optional)
+                    </summary>
+                    <div style="margin-top: 15px; padding: 15px; background: white; border: 1px solid #dee2e6; border-radius: 6px;">
+                        <div class="input-field" style="margin-bottom: 15px;">
+                            <label>Hosted Kibana Seats</label>
+                            <input type="number" id="hostedKibana" value="0" min="0" step="1" onchange="calculate()">
+                            <small style="color: #6c757d; font-size: 0.85em;">$33.33/month per seat (min. 15 seats)</small>
+                        </div>
+                        
+                        <div class="input-field" style="margin-bottom: 15px;">
+                            <label>Enterprise Grafana Seats</label>
+                            <input type="number" id="enterpriseGrafana" value="0" min="0" step="1" onchange="calculate()">
+                            <small style="color: #6c757d; font-size: 0.85em;">$100/month per seat (min. 15 seats)</small>
+                        </div>
+                        
+                        <div class="input-field" style="margin-bottom: 15px;">
+                            <label>Consulting Hours</label>
+                            <input type="number" id="consultingHours" value="0" min="0" step="1" onchange="calculate()">
+                            <small style="color: #6c757d; font-size: 0.85em;">$250 per hour</small>
+                        </div>
+                        
+                        <div class="input-field" style="margin-bottom: 15px;">
+                            <label>Premium Events per Month</label>
+                            <input type="number" id="premiumEvents" value="0" min="0" step="1" onchange="calculate()">
+                            <small style="color: #6c757d; font-size: 0.85em;">$5,000 per event</small>
+                        </div>
+                        
+                        <div class="input-field" id="akamai-eaa-field" style="display: none;">
+                            <label>Akamai EAA Seats</label>
+                            <input type="number" id="akamaiEAA" value="0" min="0" step="1" onchange="calculate()">
+                            <small>$0.25 per seat</small>
+                        </div>
+                        
+                        <div id="addons-total" style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #36BDB1, #007C79); border-radius: 6px; text-align: center; font-weight: 700; font-size: 1.15em; color: white; display: none;">
+                            Add-Ons Total: <span id="addons-cost">$0</span>
+                        </div>
+                    </div>
+                </details>
+            </div>
+            
+            <div class="content">
+                <div class="alert alert-info" id="volume-alert" style="display: none; margin-bottom: 15px;">
+                    <strong>⚠️ High Volume Notice:</strong> For Akamai deployments with >30TB/month ingest, Shared infrastructure options are not supported. Only HDX Dedicated and HDX BYOC options are available.
+                </div>
+                
+                <div class="alert alert-info" id="akamai-alert" style="display: none;">
+                    <strong>ℹ️ Akamai Limitations:</strong> For Akamai cloud provider, all BYOS options (Shared, Dedicated, BYOC) are not currently supported. HDX Shared, HDX Dedicated, and HDX BYOC are available.
+                </div>
+                
+                <h2 class="section-title">🔧 Infrastructure Requirements</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                    <div style="background: linear-gradient(135deg, #003366 0%, #36BDB1 100%); color: white; padding: 18px; border-radius: 8px; text-align: center; box-shadow: 0 4px 12px rgba(54, 189, 177, 0.3);">
+                        <div style="font-size: 0.8em; opacity: 0.9; margin-bottom: 5px; font-weight: 600;">Object Storage</div>
+                        <div style="font-size: 1.6em; font-weight: 700; font-family: 'Inconsolata', monospace;" id="infra-storage">0 GiB</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #36BDB1 0%, #0CABA8 100%); color: white; padding: 18px; border-radius: 8px; text-align: center; box-shadow: 0 4px 12px rgba(12, 171, 168, 0.3);">
+                        <div style="font-size: 0.8em; opacity: 0.9; margin-bottom: 5px; font-weight: 600;">16 vCPU Nodes</div>
+                        <div style="font-size: 1.6em; font-weight: 700; font-family: 'Inconsolata', monospace;" id="infra-nodes">0</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #0CABA8 0%, #88C9F2 100%); color: white; padding: 18px; border-radius: 8px; text-align: center; box-shadow: 0 4px 12px rgba(136, 201, 242, 0.3);">
+                        <div style="font-size: 0.8em; opacity: 0.9; margin-bottom: 5px; font-weight: 600;">Total vCPU</div>
+                        <div style="font-size: 1.6em; font-weight: 700; font-family: 'Inconsolata', monospace;" id="infra-vcpu">0</div>
+                    </div>
+                </div>
+                
+                <div style="background: #FDF5E8; padding: 18px; border-radius: 8px; border: 2px solid #36BDB1; margin-bottom: 25px;">
+                    <h4 style="color: #003366; margin-bottom: 15px; font-size: 0.95em; font-family: 'Inconsolata', monospace; text-transform: uppercase; letter-spacing: 1px;">vCPU Breakdown</h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                        <div style="text-align: center; padding: 12px; background: white; border-radius: 6px; border: 2px solid #36BDB1;">
+                            <div style="font-size: 0.75em; color: #3E958D; margin-bottom: 5px; font-weight: 600;">Core</div>
+                            <div style="font-size: 1.4em; font-weight: 700; color: #003366; font-family: 'Inconsolata', monospace;" id="vcpu-core">0</div>
+                        </div>
+                        <div style="text-align: center; padding: 12px; background: white; border-radius: 6px; border: 2px solid #36BDB1;">
+                            <div style="font-size: 0.75em; color: #3E958D; margin-bottom: 5px; font-weight: 600;">Ingest</div>
+                            <div style="font-size: 1.4em; font-weight: 700; color: #36BDB1; font-family: 'Inconsolata', monospace;" id="vcpu-ingest">0</div>
+                        </div>
+                        <div style="text-align: center; padding: 12px; background: white; border-radius: 6px; border: 2px solid #36BDB1;">
+                            <div style="font-size: 0.75em; color: #3E958D; margin-bottom: 5px; font-weight: 600;">Query</div>
+                            <div style="font-size: 1.4em; font-weight: 700; color: #007C79; font-family: 'Inconsolata', monospace;" id="vcpu-query">0</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h2 class="section-title">💰 Hydrolix Pricing Options</h2>
+                
+                <h3 style="color: #003366; font-size: 1.3em; margin-bottom: 8px; margin-top: 20px;">
+                    HDX Storage (Hydrolix Managed Storage)
+                </h3>
+                <p style="color: #6c757d; font-size: 0.9em; margin-bottom: 20px;">
+                    Hydrolix manages all storage infrastructure and operations. <strong>Pricing shown = Total TCO</strong> (no additional cloud costs).
+                </p>
+                <div class="pricing-grid">
+                    <div class="pricing-card" id="card-hdx-shared">
+                        <div class="pricing-card-title">Shared</div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Platform Fees</span>
+                            <span class="pricing-value" id="hdx-shared-platform">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Usage Fees</span>
+                            <span class="pricing-value" id="hdx-shared-usage">$0</span>
+                        </div>
+                        <div style="margin-left: 20px; padding: 6px 0; border-bottom: 1px solid #e9ecef;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.75em; color: #6c757d; font-style: italic;">Overage Rate (per GB)</span>
+                                <span style="font-size: 0.8em; font-weight: 600; color: #FFC614;" id="hdx-shared-overage">$0</span>
+                            </div>
+                        </div>
+                        <div class="pricing-row" id="hdx-shared-addons-row" style="display: none; background: rgba(255, 198, 20, 0.1); border-top: 1px dashed #FFC614; padding-top: 12px; margin-top: 10px;">
+                            <span class="pricing-label">+ Add-Ons</span>
+                            <span class="pricing-value" id="hdx-shared-addons">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Total Monthly Cost</span>
+                            <span class="pricing-value" id="hdx-shared-total">$0</span>
+                        </div>
+                        <div class="pricing-row" style="background: rgba(54, 189, 177, 0.1); border-top: 1px dashed #36BDB1; padding-top: 10px; margin-top: 8px;">
+                            <span class="pricing-label" style="font-size: 0.8em;">Gross Margin</span>
+                            <span class="pricing-value" style="font-size: 0.85em;" id="hdx-shared-margin">0%</span>
+                        </div>
+                        <div style="margin-top: 8px; padding: 8px; background: rgba(54, 189, 177, 0.05); border-radius: 4px; border: 1px solid rgba(54, 189, 177, 0.2);">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>Revenue:</span>
+                                <span id="hdx-shared-revenue" style="font-weight: 600; color: #36BDB1;">$0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>COGS:</span>
+                                <span id="hdx-shared-cogs" style="font-weight: 600; color: #dc3545;">$0</span>
+                            </div>
+                        </div>
+                        <details style="margin-top: 8px; cursor: pointer;">
+                            <summary style="font-size: 0.75em; color: #007C79; font-weight: 600; padding: 6px; background: rgba(0, 124, 121, 0.05); border-radius: 4px;">
+                                COGS Breakdown
+                            </summary>
+                            <div style="margin-top: 8px; padding: 8px; background: #FDF5E8; border-radius: 4px; font-size: 0.8em;">
+                                <div style="color: #856404; font-size: 0.75em; margin-bottom: 8px; line-height: 1.4;">
+                                    <strong>HDX COGS Components (with HDX discounts):</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Base Platform:</span>
+                                    <span style="font-weight: 600;" id="hdx-shared-cogs-platform">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Ingest (compute + ops):</span>
+                                    <span style="font-weight: 600;" id="hdx-shared-cogs-ingest">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Query (compute + ops):</span>
+                                    <span style="font-weight: 600;" id="hdx-shared-cogs-query">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6c757d;">Storage (object + ops):</span>
+                                    <span style="font-weight: 600;" id="hdx-shared-cogs-storage">$0</span>
+                                </div>
+                                <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #dee2e6; font-size: 0.7em; color: #856404; font-style: italic;">
+                                    Includes k8s cluster, compute nodes, storage operations, and compressed object storage
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                    
+                    <div class="pricing-card" id="card-hdx-dedicated">
+                        <div class="pricing-card-title">Dedicated</div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Platform Fees</span>
+                            <span class="pricing-value" id="hdx-dedicated-platform">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Usage Fees</span>
+                            <span class="pricing-value" id="hdx-dedicated-usage">$0</span>
+                        </div>
+                        <div style="margin-left: 20px; padding: 6px 0; border-bottom: 1px solid #e9ecef;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.75em; color: #6c757d; font-style: italic;">Overage Rate (per GB)</span>
+                                <span style="font-size: 0.8em; font-weight: 600; color: #FFC614;" id="hdx-dedicated-overage">$0</span>
+                            </div>
+                        </div>
+                        <div class="pricing-row" id="hdx-dedicated-addons-row" style="display: none; background: rgba(255, 198, 20, 0.1); border-top: 1px dashed #FFC614; padding-top: 12px; margin-top: 10px;">
+                            <span class="pricing-label">+ Add-Ons</span>
+                            <span class="pricing-value" id="hdx-dedicated-addons">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Total Monthly Cost</span>
+                            <span class="pricing-value" id="hdx-dedicated-total">$0</span>
+                        </div>
+                        <div class="pricing-row" style="background: rgba(54, 189, 177, 0.1); border-top: 1px dashed #36BDB1; padding-top: 10px; margin-top: 8px;">
+                            <span class="pricing-label" style="font-size: 0.8em;">Gross Margin</span>
+                            <span class="pricing-value" style="font-size: 0.85em;" id="hdx-dedicated-margin">0%</span>
+                        </div>
+                        <div style="margin-top: 8px; padding: 8px; background: rgba(54, 189, 177, 0.05); border-radius: 4px; border: 1px solid rgba(54, 189, 177, 0.2);">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>Revenue:</span>
+                                <span id="hdx-dedicated-revenue" style="font-weight: 600; color: #36BDB1;">$0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>COGS:</span>
+                                <span id="hdx-dedicated-cogs" style="font-weight: 600; color: #dc3545;">$0</span>
+                            </div>
+                        </div>
+                        <details style="margin-top: 8px; cursor: pointer;">
+                            <summary style="font-size: 0.75em; color: #007C79; font-weight: 600; padding: 6px; background: rgba(0, 124, 121, 0.05); border-radius: 4px;">
+                                COGS Breakdown
+                            </summary>
+                            <div style="margin-top: 8px; padding: 8px; background: #FDF5E8; border-radius: 4px; font-size: 0.8em;">
+                                <div style="color: #856404; font-size: 0.75em; margin-bottom: 8px; line-height: 1.4;">
+                                    <strong>HDX COGS Components (with HDX discounts):</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Base Platform:</span>
+                                    <span style="font-weight: 600;" id="hdx-dedicated-cogs-platform">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Ingest (compute + ops):</span>
+                                    <span style="font-weight: 600;" id="hdx-dedicated-cogs-ingest">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Query (compute + ops):</span>
+                                    <span style="font-weight: 600;" id="hdx-dedicated-cogs-query">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6c757d;">Storage (object + ops):</span>
+                                    <span style="font-weight: 600;" id="hdx-dedicated-cogs-storage">$0</span>
+                                </div>
+                                <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #dee2e6; font-size: 0.7em; color: #856404; font-style: italic;">
+                                    Same COGS as Shared - dedicated hosting impacts platform fees, not our costs
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                    
+                    <div class="pricing-card" id="card-hdx-byoc">
+                        <div class="pricing-card-title">BYOC</div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Platform Fees</span>
+                            <span class="pricing-value" id="hdx-byoc-platform">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Usage Fees</span>
+                            <span class="pricing-value" id="hdx-byoc-usage">$0</span>
+                        </div>
+                        <div style="margin-left: 20px; padding: 6px 0; border-bottom: 1px solid #e9ecef;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.75em; color: #6c757d; font-style: italic;">Overage Rate (per GB)</span>
+                                <span style="font-size: 0.8em; font-weight: 600; color: #FFC614;" id="hdx-byoc-overage">$0</span>
+                            </div>
+                        </div>
+                        <div class="pricing-row" id="hdx-byoc-addons-row" style="display: none; background: rgba(255, 198, 20, 0.1); border-top: 1px dashed #FFC614; padding-top: 12px; margin-top: 10px;">
+                            <span class="pricing-label">+ Add-Ons</span>
+                            <span class="pricing-value" id="hdx-byoc-addons">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Hydrolix Total</span>
+                            <span class="pricing-value" id="hdx-byoc-total">$0</span>
+                        </div>
+                        <div class="pricing-row tco-section">
+                            <span class="pricing-label">+ Cloud Infrastructure</span>
+                            <span class="pricing-value" id="hdx-byoc-cloud">$0</span>
+                        </div>
+                        <details style="margin-left: 20px; margin-bottom: 8px;">
+                            <summary style="font-size: 0.75em; color: #007C79; cursor: pointer; user-select: none;">Show Cloud Cost Details</summary>
+                            <div style="margin-top: 8px; padding: 8px; background: #FDF5E8; border-radius: 4px; font-size: 0.8em;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Compute:</span>
+                                    <span style="font-weight: 600;" id="hdx-byoc-cloud-compute">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6c757d;">Storage:</span>
+                                    <span style="font-weight: 600;" id="hdx-byoc-cloud-storage">$0</span>
+                                </div>
+                            </div>
+                        </details>
+                        <div class="pricing-row tco-total">
+                            <span class="pricing-label">= Total TCO</span>
+                            <span class="pricing-value" id="hdx-byoc-tco">$0</span>
+                        </div>
+                        <div class="pricing-row" style="background: rgba(54, 189, 177, 0.1); border-top: 1px dashed #36BDB1; padding-top: 10px; margin-top: 8px;">
+                            <span class="pricing-label" style="font-size: 0.8em;">Gross Margin</span>
+                            <span class="pricing-value" style="font-size: 0.85em;" id="hdx-byoc-margin">0%</span>
+                        </div>
+                        <div style="margin-top: 8px; padding: 8px; background: rgba(54, 189, 177, 0.05); border-radius: 4px; border: 1px solid rgba(54, 189, 177, 0.2);">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>Revenue:</span>
+                                <span id="hdx-byoc-revenue" style="font-weight: 600; color: #36BDB1;">$0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>COGS:</span>
+                                <span id="hdx-byoc-cogs" style="font-weight: 600; color: #dc3545;">$0</span>
+                            </div>
+                        </div>
+                        <details style="margin-top: 8px; cursor: pointer;">
+                            <summary style="font-size: 0.75em; color: #007C79; font-weight: 600; padding: 6px; background: rgba(0, 124, 121, 0.05); border-radius: 4px;">
+                                COGS Breakdown
+                            </summary>
+                            <div style="margin-top: 8px; padding: 8px; background: #FDF5E8; border-radius: 4px; font-size: 0.8em;">
+                                <div style="color: #856404; font-size: 0.75em; margin-bottom: 8px; line-height: 1.4;">
+                                    <strong>HDX BYOC COGS (Licensing + Storage):</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Licensing Overhead:</span>
+                                    <span style="font-weight: 600;" id="hdx-byoc-cogs-platform">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Ingest (customer pays):</span>
+                                    <span style="font-weight: 600;" id="hdx-byoc-cogs-ingest">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Query (customer pays):</span>
+                                    <span style="font-weight: 600;" id="hdx-byoc-cogs-query">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6c757d;">Storage (Hydrolix pays):</span>
+                                    <span style="font-weight: 600;" id="hdx-byoc-cogs-storage">$0</span>
+                                </div>
+                                <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #dee2e6; font-size: 0.7em; color: #856404; font-style: italic;">
+                                    Customer pays compute costs, Hydrolix manages and pays for storage
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+                
+                <h3 style="color: #003366; font-size: 1.3em; margin-bottom: 8px; margin-top: 20px;">
+                    BYOS (Bring Your Own Storage)
+                </h3>
+                <p style="color: #6c757d; font-size: 0.9em; margin-bottom: 20px;">
+                    You manage storage infrastructure, Hydrolix manages compute. <strong>TCO = Hydrolix + Cloud Infrastructure</strong> costs shown separately.
+                </p>
+                <div class="pricing-grid">
+                    <div class="pricing-card" id="card-byos-shared">
+                        <div class="pricing-card-title">Shared</div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Platform Fees</span>
+                            <span class="pricing-value" id="byos-shared-platform">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Usage Fees</span>
+                            <span class="pricing-value" id="byos-shared-usage">$0</span>
+                        </div>
+                        <div style="margin-left: 20px; padding: 6px 0; border-bottom: 1px solid #e9ecef;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.75em; color: #6c757d; font-style: italic;">Overage Rate (per GB)</span>
+                                <span style="font-size: 0.8em; font-weight: 600; color: #FFC614;" id="byos-shared-overage">$0</span>
+                            </div>
+                        </div>
+                        <div class="pricing-row" id="byos-shared-addons-row" style="display: none; background: rgba(255, 198, 20, 0.1); border-top: 1px dashed #FFC614; padding-top: 12px; margin-top: 10px;">
+                            <span class="pricing-label">+ Add-Ons</span>
+                            <span class="pricing-value" id="byos-shared-addons">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Hydrolix Total</span>
+                            <span class="pricing-value" id="byos-shared-total">$0</span>
+                        </div>
+                        <div class="pricing-row tco-section">
+                            <span class="pricing-label">+ Cloud Infrastructure</span>
+                            <span class="pricing-value" id="byos-shared-cloud">$0</span>
+                        </div>
+                        <details style="margin-left: 20px; margin-bottom: 8px;">
+                            <summary style="font-size: 0.75em; color: #007C79; cursor: pointer; user-select: none;">Show Cloud Cost Details</summary>
+                            <div style="margin-top: 8px; padding: 8px; background: #FDF5E8; border-radius: 4px; font-size: 0.8em;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Compute:</span>
+                                    <span style="font-weight: 600;" id="byos-shared-cloud-compute">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6c757d;">Storage:</span>
+                                    <span style="font-weight: 600;" id="byos-shared-cloud-storage">$0</span>
+                                </div>
+                            </div>
+                        </details>
+                        <div class="pricing-row tco-total">
+                            <span class="pricing-label">= Total TCO</span>
+                            <span class="pricing-value" id="byos-shared-tco">$0</span>
+                        </div>
+                        <div class="pricing-row" style="background: rgba(54, 189, 177, 0.1); border-top: 1px dashed #36BDB1; padding-top: 10px; margin-top: 8px;">
+                            <span class="pricing-label" style="font-size: 0.8em;">Gross Margin</span>
+                            <span class="pricing-value" style="font-size: 0.85em;" id="byos-shared-margin">0%</span>
+                        </div>
+                        <div style="margin-top: 8px; padding: 8px; background: rgba(54, 189, 177, 0.05); border-radius: 4px; border: 1px solid rgba(54, 189, 177, 0.2);">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>Revenue:</span>
+                                <span id="byos-shared-revenue" style="font-weight: 600; color: #36BDB1;">$0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>COGS:</span>
+                                <span id="byos-shared-cogs" style="font-weight: 600; color: #dc3545;">$0</span>
+                            </div>
+                        </div>
+                        <details style="margin-top: 8px; cursor: pointer;">
+                            <summary style="font-size: 0.75em; color: #007C79; font-weight: 600; padding: 6px; background: rgba(0, 124, 121, 0.05); border-radius: 4px;">
+                                COGS Breakdown
+                            </summary>
+                            <div style="margin-top: 8px; padding: 8px; background: #FDF5E8; border-radius: 4px; font-size: 0.8em;">
+                                <div style="color: #856404; font-size: 0.75em; margin-bottom: 8px; line-height: 1.4;">
+                                    <strong>BYOS COGS Components (compute only):</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Platform (amortized):</span>
+                                    <span style="font-weight: 600;" id="byos-shared-cogs-platform">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Ingest (compute only):</span>
+                                    <span style="font-weight: 600;" id="byos-shared-cogs-ingest">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6c757d;">Query (compute only):</span>
+                                    <span style="font-weight: 600;" id="byos-shared-cogs-query">$0</span>
+                                </div>
+                                <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #dee2e6; font-size: 0.7em; color: #856404; font-style: italic;">
+                                    Customer provides storage - COGS only includes compute. Shared core amortization applied.
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                    
+                    <div class="pricing-card" id="card-byos-dedicated">
+                        <div class="pricing-card-title">Dedicated</div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Platform Fees</span>
+                            <span class="pricing-value" id="byos-dedicated-platform">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Usage Fees</span>
+                            <span class="pricing-value" id="byos-dedicated-usage">$0</span>
+                        </div>
+                        <div style="margin-left: 20px; padding: 6px 0; border-bottom: 1px solid #e9ecef;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.75em; color: #6c757d; font-style: italic;">Overage Rate (per GB)</span>
+                                <span style="font-size: 0.8em; font-weight: 600; color: #FFC614;" id="byos-dedicated-overage">$0</span>
+                            </div>
+                        </div>
+                        <div class="pricing-row" id="byos-dedicated-addons-row" style="display: none; background: rgba(255, 198, 20, 0.1); border-top: 1px dashed #FFC614; padding-top: 12px; margin-top: 10px;">
+                            <span class="pricing-label">+ Add-Ons</span>
+                            <span class="pricing-value" id="byos-dedicated-addons">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Hydrolix Total</span>
+                            <span class="pricing-value" id="byos-dedicated-total">$0</span>
+                        </div>
+                        <div class="pricing-row tco-section">
+                            <span class="pricing-label">+ Cloud Infrastructure</span>
+                            <span class="pricing-value" id="byos-dedicated-cloud">$0</span>
+                        </div>
+                        <details style="margin-left: 20px; margin-bottom: 8px;">
+                            <summary style="font-size: 0.75em; color: #007C79; cursor: pointer; user-select: none;">Show Cloud Cost Details</summary>
+                            <div style="margin-top: 8px; padding: 8px; background: #FDF5E8; border-radius: 4px; font-size: 0.8em;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Compute:</span>
+                                    <span style="font-weight: 600;" id="byos-dedicated-cloud-compute">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6c757d;">Storage:</span>
+                                    <span style="font-weight: 600;" id="byos-dedicated-cloud-storage">$0</span>
+                                </div>
+                            </div>
+                        <div class="pricing-row" style="background: rgba(255, 198, 20, 0.05); border-top: 1px dashed #FFC614; padding-top: 10px; margin-top: 8px;">
+                            <span class="pricing-label" style="font-size: 0.8em;">Overage Rate (per GB)</span>
+                            <span class="pricing-value" style="font-size: 0.85em;" id="byos-dedicated-overage">$0</span>
+                        </div>
+                        </details>
+                        <div class="pricing-row tco-total">
+                            <span class="pricing-label">= Total TCO</span>
+                            <span class="pricing-value" id="byos-dedicated-tco">$0</span>
+                        </div>
+                        <div class="pricing-row" style="background: rgba(54, 189, 177, 0.1); border-top: 1px dashed #36BDB1; padding-top: 10px; margin-top: 8px;">
+                            <span class="pricing-label" style="font-size: 0.8em;">Gross Margin</span>
+                            <span class="pricing-value" style="font-size: 0.85em;" id="byos-dedicated-margin">0%</span>
+                        </div>
+                        <div style="margin-top: 8px; padding: 8px; background: rgba(54, 189, 177, 0.05); border-radius: 4px; border: 1px solid rgba(54, 189, 177, 0.2);">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>Revenue:</span>
+                                <span id="byos-dedicated-revenue" style="font-weight: 600; color: #36BDB1;">$0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>COGS:</span>
+                                <span id="byos-dedicated-cogs" style="font-weight: 600; color: #dc3545;">$0</span>
+                            </div>
+                        </div>
+                        <details style="margin-top: 8px; cursor: pointer;">
+                            <summary style="font-size: 0.75em; color: #007C79; font-weight: 600; padding: 6px; background: rgba(0, 124, 121, 0.05); border-radius: 4px;">
+                                COGS Breakdown
+                            </summary>
+                            <div style="margin-top: 8px; padding: 8px; background: #FDF5E8; border-radius: 4px; font-size: 0.8em;">
+                                <div style="color: #856404; font-size: 0.75em; margin-bottom: 8px; line-height: 1.4;">
+                                    <strong>BYOS COGS Components (compute only):</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Platform (full):</span>
+                                    <span style="font-weight: 600;" id="byos-dedicated-cogs-platform">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Ingest (compute only):</span>
+                                    <span style="font-weight: 600;" id="byos-dedicated-cogs-ingest">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6c757d;">Query (compute only):</span>
+                                    <span style="font-weight: 600;" id="byos-dedicated-cogs-query">$0</span>
+                                </div>
+                                <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #dee2e6; font-size: 0.7em; color: #856404; font-style: italic;">
+                                    Customer provides storage - COGS only includes compute. Full platform cost (no amortization).
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                    
+                    <div class="pricing-card" id="card-byos-byoc">
+                        <div class="pricing-card-title">BYOC</div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Platform Fees</span>
+                            <span class="pricing-value" id="byos-byoc-platform">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Usage Fees</span>
+                            <span class="pricing-value" id="byos-byoc-usage">$0</span>
+                        </div>
+                        <div style="margin-left: 20px; padding: 6px 0; border-bottom: 1px solid #e9ecef;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.75em; color: #6c757d; font-style: italic;">Overage Rate (per GB)</span>
+                                <span style="font-size: 0.8em; font-weight: 600; color: #FFC614;" id="byos-byoc-overage">$0</span>
+                            </div>
+                        </div>
+                        <div class="pricing-row" id="byos-byoc-addons-row" style="display: none; background: rgba(255, 198, 20, 0.1); border-top: 1px dashed #FFC614; padding-top: 12px; margin-top: 10px;">
+                            <span class="pricing-label">+ Add-Ons</span>
+                            <span class="pricing-value" id="byos-byoc-addons">$0</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Hydrolix Total</span>
+                            <span class="pricing-value" id="byos-byoc-total">$0</span>
+                        </div>
+                        <div class="pricing-row tco-section">
+                            <span class="pricing-label">+ Cloud Infrastructure</span>
+                            <span class="pricing-value" id="byos-byoc-cloud">$0</span>
+                        </div>
+                        <details style="margin-left: 20px; margin-bottom: 8px;">
+                            <summary style="font-size: 0.75em; color: #007C79; cursor: pointer; user-select: none;">Show Cloud Cost Details</summary>
+                            <div style="margin-top: 8px; padding: 8px; background: #FDF5E8; border-radius: 4px; font-size: 0.8em;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Compute:</span>
+                                    <span style="font-weight: 600;" id="byos-byoc-cloud-compute">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6c757d;">Storage:</span>
+                                    <span style="font-weight: 600;" id="byos-byoc-cloud-storage">$0</span>
+                                </div>
+                            </div>
+                        <div class="pricing-row" style="background: rgba(255, 198, 20, 0.05); border-top: 1px dashed #FFC614; padding-top: 10px; margin-top: 8px;">
+                            <span class="pricing-label" style="font-size: 0.8em;">Overage Rate (per GB)</span>
+                            <span class="pricing-value" style="font-size: 0.85em;" id="byos-byoc-overage">$0</span>
+                        </div>
+                        </details>
+                        <div class="pricing-row tco-total">
+                            <span class="pricing-label">= Total TCO</span>
+                            <span class="pricing-value" id="byos-byoc-tco">$0</span>
+                        </div>
+                        <div class="pricing-row" style="background: rgba(54, 189, 177, 0.1); border-top: 1px dashed #36BDB1; padding-top: 10px; margin-top: 8px;">
+                            <span class="pricing-label" style="font-size: 0.8em;">Gross Margin</span>
+                            <span class="pricing-value" style="font-size: 0.85em;" id="byos-byoc-margin">0%</span>
+                        </div>
+                        <div style="margin-top: 8px; padding: 8px; background: rgba(54, 189, 177, 0.05); border-radius: 4px; border: 1px solid rgba(54, 189, 177, 0.2);">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>Revenue:</span>
+                                <span id="byos-byoc-revenue" style="font-weight: 600; color: #36BDB1;">$0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7em; color: #495057; margin: 3px 0;">
+                                <span>COGS:</span>
+                                <span id="byos-byoc-cogs" style="font-weight: 600; color: #dc3545;">$0</span>
+                            </div>
+                        </div>
+                        <details style="margin-top: 8px; cursor: pointer;">
+                            <summary style="font-size: 0.75em; color: #007C79; font-weight: 600; padding: 6px; background: rgba(0, 124, 121, 0.05); border-radius: 4px;">
+                                COGS Breakdown
+                            </summary>
+                            <div style="margin-top: 8px; padding: 8px; background: #FDF5E8; border-radius: 4px; font-size: 0.8em;">
+                                <div style="color: #856404; font-size: 0.75em; margin-bottom: 8px; line-height: 1.4;">
+                                    <strong>BYOS BYOC COGS (Licensing Overhead Only):</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Licensing Overhead:</span>
+                                    <span style="font-weight: 600;" id="byos-byoc-cogs-platform">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #6c757d;">Ingest (customer pays):</span>
+                                    <span style="font-weight: 600;" id="byos-byoc-cogs-ingest">$0</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #6c757d;">Query (customer pays):</span>
+                                    <span style="font-weight: 600;" id="byos-byoc-cogs-query">$0</span>
+                                </div>
+                                <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #dee2e6; font-size: 0.7em; color: #856404; font-style: italic;">
+                                    Customer pays ALL infrastructure costs (compute + storage) in their account
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+                
+                <details class="comparison-section">
+                    <summary style="cursor: pointer; user-select: none; padding: 15px; background: linear-gradient(135deg, #003366 0%, #007C79 100%); color: white; border-radius: 8px; margin-bottom: 20px; font-weight: 700; font-size: 1.1em;">
+                        🔍 Competitor TCO Comparison
+                    </summary>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #00D4FF;">
+                        <strong>Baseline:</strong> Hydrolix BYOS BYOC Total TCO = 
+                        <span id="baseline-tco" style="font-weight: 700; color: #36BDB1; font-size: 1.1em;">$0</span>
+                        <span style="color: #6c757d; font-size: 0.9em; margin-left: 10px;">
+                            (Available for all cloud providers including Akamai)
+                        </span>
+                    </div>
+                    
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Vendor</th>
+                                <th>Estimated TCO</th>
+                                <th>Cost per GB</th>
+                                <th>vs Hydrolix</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparison-tbody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </details>
+                
+                <details style="margin-top: 30px;">
+                    <summary style="cursor: pointer; user-select: none; padding: 15px; background: linear-gradient(135deg, #003366 0%, #007C79 100%); color: white; border-radius: 8px; margin-bottom: 20px; font-weight: 700; font-size: 1.1em;">
+                        📊 Calculation Details (For Verification)
+                    </summary>
+                    <div class="debug-grid" id="debug-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+    
+    <div style="text-align: center; padding: 20px; color: white; font-size: 0.9em; opacity: 0.8;">
+        <p style="font-family: 'Lato', sans-serif;">© 2024 Hydrolix Inc. | Real-Time Analytics at Petabyte Scale</p>
+    </div>
+    
+    <script>
+        // Exact cloud pricing from Excel Hidden sheet rows 5-14
+        const cloudPricing = {
+            'Akamai': {
+                k8sCluster: 80,                // C5
+                blockStorage: 0.10,             // D5
+                standardNodes: 0.40576438,      // E5 (actual formula result)
+                objectStorage: 0.02,            // F5
+                writeOps1M: 6.5,               // G5
+                listOps1M: 5.5,                // H5
+                readOps1M: 0.5,                // I5
+                hdxComputeDiscount: 0.30,      // J5
+                hdxStorageDiscount: 0          // K5
+            },
+            'AWS US East': {
+                k8sCluster: 80,
+                blockStorage: 0.10,
+                standardNodes: 0.626,
+                objectStorage: 0.023,
+                writeOps1M: 5,
+                listOps1M: 5,
+                readOps1M: 0.4,
+                hdxComputeDiscount: 0.40,
+                hdxStorageDiscount: 0
+            },
+            'AWS Ireland': {
+                k8sCluster: 80,
+                blockStorage: 0.10,
+                standardNodes: 0.773,
+                objectStorage: 0.023,
+                writeOps1M: 5,
+                listOps1M: 5,
+                readOps1M: 0.4,
+                hdxComputeDiscount: 0.40,
+                hdxStorageDiscount: 0
+            },
+            'AWS Sao Paulo': {
+                k8sCluster: 80,
+                blockStorage: 0.10,
+                standardNodes: 1.089,
+                objectStorage: 0.023,
+                writeOps1M: 5,
+                listOps1M: 5,
+                readOps1M: 0.4,
+                hdxComputeDiscount: 0.40,
+                hdxStorageDiscount: 0
+            },
+            'AWS Seoul': {
+                k8sCluster: 80,
+                blockStorage: 0.10,
+                standardNodes: 0.763,
+                objectStorage: 0.023,
+                writeOps1M: 5,
+                listOps1M: 5,
+                readOps1M: 0.4,
+                hdxComputeDiscount: 0.40,
+                hdxStorageDiscount: 0
+            },
+            'AWS Tokyo': {
+                k8sCluster: 80,
+                blockStorage: 0.10,
+                standardNodes: 0.899,
+                objectStorage: 0.023,
+                writeOps1M: 5,
+                listOps1M: 5,
+                readOps1M: 0.4,
+                hdxComputeDiscount: 0.40,
+                hdxStorageDiscount: 0
+            },
+            'Azure': {
+                k8sCluster: 80,
+                blockStorage: 0.10,
+                standardNodes: 0.61788,
+                objectStorage: 0.02,
+                writeOps1M: 6.5,
+                listOps1M: 5.5,
+                readOps1M: 0.5,
+                hdxComputeDiscount: 0.10,
+                hdxStorageDiscount: 0
+            },
+            'GCP Oregon': {
+                k8sCluster: 80,
+                blockStorage: 0.10,
+                standardNodes: 0.5594,
+                objectStorage: 0.02,
+                writeOps1M: 5,
+                listOps1M: 5,
+                readOps1M: 0.4,
+                hdxComputeDiscount: 0.25,
+                hdxStorageDiscount: 0
+            },
+            'GCP Paris': {
+                k8sCluster: 80,
+                blockStorage: 0.10,
+                standardNodes: 0.64890,
+                objectStorage: 0.02,
+                writeOps1M: 5,
+                listOps1M: 5,
+                readOps1M: 0.4,
+                hdxComputeDiscount: 0.25,
+                hdxStorageDiscount: 0
+            },
+            'GCP Tokyo': {
+                k8sCluster: 80,
+                blockStorage: 0.10,
+                standardNodes: 0.71763,
+                objectStorage: 0.02,
+                writeOps1M: 5,
+                listOps1M: 5,
+                readOps1M: 0.4,
+                hdxComputeDiscount: 0.25,
+                hdxStorageDiscount: 0
+            }
+        };
+        
+        // Settings from Hidden sheet (M17-M24)
+        const settings = {
+            summaryInflation: 0.20,          // N17
+            storageInflation: 0.20,          // N18
+            overageInflation: 0.20,          // N19
+            grossMarginTarget: 0.70,         // N20
+            coreDiscount: 0,                 // N21
+            sharedCoreAmortization: 0.01,    // N22
+            pocDuration: 2,                  // N23
+            gibPerTibDay: 31146.666667       // N24
+        };
+        
+        // Compression ratios (P5-R8)
+        const compressionSettings = {
+            APP: { ratio: 18, blend: 0 },
+            DX: { ratio: 12, blend: 0.75 },
+            NI: { ratio: 8, blend: 0 },
+            SIEM: { ratio: 6, blend: 0.25 }
+        };
+        
+        // Using APP compression as default (Q5-R8)
+        const defaultCompression = 'APP';
+        
+        function ceiling(value, significance) {
+            return Math.ceil(value / significance) * significance;
+        }
+        
+        function calculate() {
+            try {
+                
+                const cloudProvider = document.getElementById('cloudProvider').value;
+                const ingestTB = parseFloat(document.getElementById('ingestTB').value);
+                const retention = parseFloat(document.getElementById('retention').value);
+                const qpm = parseFloat(document.getElementById('qpm').value);
+                const customerComputeDiscount = parseFloat(document.getElementById('computeDiscount').value) / 100;
+                const customerStorageDiscount = parseFloat(document.getElementById('storageDiscount').value) / 100;
+                
+                
+                // Show/hide Akamai EAA field
+                const isAkamai = cloudProvider === 'Akamai';
+                const akamaiEAAField = document.getElementById('akamai-eaa-field');
+                if (akamaiEAAField) akamaiEAAField.style.display = isAkamai ? 'block' : 'none';
+                
+                // Calculate add-ons
+                const hostedKibana = parseFloat(document.getElementById('hostedKibana').value) || 0;
+                const enterpriseGrafana = parseFloat(document.getElementById('enterpriseGrafana').value) || 0;
+                const consultingHours = parseFloat(document.getElementById('consultingHours').value) || 0;
+                const premiumEvents = parseFloat(document.getElementById('premiumEvents').value) || 0;
+                const akamaiEAA = isAkamai ? (parseFloat(document.getElementById('akamaiEAA').value) || 0) : 0;
+                
+                // Apply minimums for seat-based add-ons with warnings
+                let warningMessage = '';
+                
+                const effectiveKibanaSeats = hostedKibana > 0 ? Math.max(hostedKibana, 15) : 0;
+                if (hostedKibana > 0 && hostedKibana < 15) {
+                    document.getElementById('hostedKibana').value = 15;
+                    warningMessage += 'Hosted Kibana has a 15-seat minimum. Adjusted to 15 seats.\n';
+                }
+                
+                const effectiveGrafanaSeats = enterpriseGrafana > 0 ? Math.max(enterpriseGrafana, 15) : 0;
+                if (enterpriseGrafana > 0 && enterpriseGrafana < 15) {
+                    document.getElementById('enterpriseGrafana').value = 15;
+                    warningMessage += 'Enterprise Grafana has a 15-seat minimum. Adjusted to 15 seats.\n';
+                }
+                
+                // Show warning if any adjustments were made
+                if (warningMessage) {
+                    alert('⚠️ Minimum Seat Requirements:\n\n' + warningMessage);
+                }
+                
+                const addOnsCost = 
+                    effectiveKibanaSeats * 33.33 + 
+                    effectiveGrafanaSeats * 100 + 
+                    consultingHours * 250 + 
+                    premiumEvents * 5000 +  // $5,000 per premium event
+                    akamaiEAA * 0.25;
+                
+                
+                // Show/hide add-ons total
+                const addonsTotal = document.getElementById('addons-total');
+                const addonsCostDisplay = document.getElementById('addons-cost');
+                if (addonsTotal && addonsCostDisplay) {
+                    if (addOnsCost > 0) {
+                        addonsTotal.style.display = 'block';
+                        addonsCostDisplay.textContent = '$' + addOnsCost.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                    } else {
+                        addonsTotal.style.display = 'none';
+                    }
+                }
+                
+                const cloud = cloudPricing[cloudProvider];
+                const comp = compressionSettings[defaultCompression];
+            
+            // Calculator inputs (Calculator!F5, F6, C5, C6, C7, C8)
+            const F5 = ingestTB;
+            const F6 = retention;
+            const C5 = cloudProvider;
+            const C6 = qpm;
+            const C7 = customerComputeDiscount;
+            const C8 = customerStorageDiscount;
+            
+            // ===== COMPUTE COSTS (Hidden rows 5-9) =====
+            
+            // Row 5: Base compute costs (U5, V5)
+            const Q14 = 5;  // Ingest capacity min
+            const Q15 = 2;  // Query capacity min
+            const U5 = cloud.k8sCluster + cloud.blockStorage * 1024 + 
+                       cloud.standardNodes * 730 * (Q14 + Q15);
+            
+            const Q18 = 30 / 6.5;  // Write ops ratio
+            const Q19 = 14 / (6.5 * 7);  // List ops ratio  
+            const Q20 = 19 / 0.5;  // Read ops ratio
+            const V5 = cloud.writeOps1M * Q18 + cloud.listOps1M * Q19 + cloud.readOps1M * Q20;
+            
+            // Row 6: Per-GB compute costs
+            const R14 = 3.2;  // Ingest capacity per TiB/day
+            const U6 = cloud.standardNodes * 730 * R14 / settings.gibPerTibDay;
+            
+            const R18 = 21 / 6.5;  // Write ops per TiB/day
+            const R19 = 7 / (6.5 * 7);  // List ops per TiB/day
+            const V6 = (cloud.writeOps1M * R18 + cloud.listOps1M * R19) / settings.gibPerTibDay;
+            
+            // Row 7: Query compute costs
+            const R15 = 3.2;  // Query capacity per TiB/day
+            const U7 = cloud.standardNodes * 730 * R15 / settings.gibPerTibDay;
+            const R20 = 24 / 0.5;  // Read ops per TiB/day = 48
+            const V7 = cloud.readOps1M * R20 / settings.gibPerTibDay;
+            
+            // Row 8: Storage costs with compression
+            // R11 = weighted blend of all compression ratios with inflation
+            // Formula: (R5/Q5 + R6/Q6 + R7/Q7 + R8/Q8) * (1 + 0.20) * (1 + 0.20)
+            // Using actual values: (0/18 + 0.75/12 + 0/8 + 0.25/6) * 1.2 * 1.2 = 0.15
+            const U8 = 0;
+            const R11 = (
+                compressionSettings.APP.blend / compressionSettings.APP.ratio + 
+                compressionSettings.DX.blend / compressionSettings.DX.ratio + 
+                compressionSettings.NI.blend / compressionSettings.NI.ratio + 
+                compressionSettings.SIEM.blend / compressionSettings.SIEM.ratio
+            ) * (1 + settings.summaryInflation) * (1 + settings.storageInflation);
+            const V8 = R11 * cloud.objectStorage;
+            
+            // Row 9: Total per-GB COGS
+            const U9 = U6 + U7 + U8;
+            const V9 = V6 + V7 + V8;
+            
+            // ===== LIST PRICING WITH DISCOUNTS (Hidden rows 11-17) =====
+            
+            // Row 11: Apply HDX discounts to COGS
+            const U11 = U5 * (1 - cloud.hdxComputeDiscount);
+            const V11 = V5 * (1 - cloud.hdxStorageDiscount);
+            
+            // Row 12: Ingest costs with HDX discount
+            const U12 = U6 * (1 - cloud.hdxComputeDiscount);
+            const V12 = V6 * (1 - cloud.hdxStorageDiscount);
+            
+            // Row 13: Query costs with HDX discount
+            const U13 = U7 * (1 - cloud.hdxComputeDiscount);
+            const V13 = V7 * (1 - cloud.hdxStorageDiscount);
+            
+            // Row 14: Storage costs with HDX discount
+            const U14 = U8 * (1 - cloud.hdxComputeDiscount);
+            const V14 = V8 * (1 - cloud.hdxStorageDiscount);
+            
+            // Row 17: Apply margin to get list prices
+            const U17 = U11 / (1 - settings.grossMarginTarget);
+            const V17 = V11 / (1 - settings.grossMarginTarget);
+            const W17 = U17 + V17;
+            const X17 = ceiling(W17, 10);
+            
+            // Row 18: Ingest list price per GB
+            const U18 = U12 / (1 - settings.grossMarginTarget);
+            const V18 = V12 / (1 - settings.grossMarginTarget);
+            const W18 = U18 + V18;
+            const X18 = ceiling(W18, 0.001);
+            
+            // Row 19: Query list price per GB
+            const U19 = U13 / (1 - settings.grossMarginTarget);
+            const V19 = V13 / (1 - settings.grossMarginTarget);
+            const W19 = U19 + V19;
+            const X19 = ceiling(W19, 0.001);
+            
+            // Row 20: Storage list price per GB
+            const U20 = U14 / (1 - settings.grossMarginTarget);
+            const V20 = V14 / (1 - settings.grossMarginTarget);
+            const W20 = U20 + V20;
+            const X20 = ceiling(W20, 0.001);
+            
+            // ===== HDX STORAGE PER-GB RATES (Hidden rows 13-17) =====
+            
+            // AA13 = X18 (ingest cost)
+            const AA13 = X18;
+            
+            // AA14 = X19 * C6/100 (query cost scaled by QPM)
+            const AA14 = X19 * C6 / 100;
+            
+            // AA15 = X20 * F6 (storage cost scaled by retention)
+            const AA15 = X20 * F6;
+            
+            // AA16 = 0 (no license fee for HDX)
+            const AA16 = 0;
+            
+            // AA17 = sum of AA13:AA16
+            const AA17 = AA13 + AA14 + AA15 + AA16;
+            
+            // AB13-AB17 same as AA (Dedicated has same per-GB rates)
+            const AB17 = AA17;
+            
+            // AC13 = CEILING(V18, 0.001) (BYOC ingest storage ops)
+            const AC13 = ceiling(V18, 0.001);
+            
+            // AC14 = CEILING(V19, 0.001) (BYOC query storage ops)
+            const AC14 = ceiling(V19, 0.001);
+            
+            // AC15 = X20 * F6 (BYOC storage cost with retention)
+            const AC15 = X20 * F6;
+            
+            // AC16 = 0.075 (BYOC license fee)
+            const AC16 = 0.075;
+            
+            // AC17 = sum of AC13:AC16
+            const AC17 = AC13 + AC14 + AC15 + AC16;
+            
+            // AD13 = CEILING(U18, 0.001) (BYOS ingest compute)
+            const AD13 = ceiling(U18, 0.001);
+            
+            // AD14 = CEILING(U19, 0.001) (BYOS query compute)
+            const AD14 = ceiling(U19, 0.001);
+            
+            // AD15 = 0 (no storage - bring your own)
+            const AD15 = 0;
+            
+            // AD16 = 0
+            const AD16 = 0;
+            
+            // AD17 = sum of AD13:AD16
+            const AD17 = AD13 + AD14 + AD15 + AD16;
+            
+            // AE17 same as AD17 (Dedicated)
+            const AE17 = AD17;
+            
+            // AF17 = 0.075 (BYOS BYOC just license)
+            const AF17 = 0.075;
+            
+            // ===== DIRECT COSTS (Hidden rows 22-26) =====
+            
+            // Row 23: Direct compute costs
+            const U23 = U5 * (1 - C7);
+            const V23 = V5 * (1 - C8);
+            const W23 = U23 + V23;
+            const X23 = ceiling(W23, 10);
+            
+            // Row 24: Direct per-GB costs  
+            const U24 = U6 * (1 - C7);
+            const V24 = V6 * (1 - C8);
+            const W24 = U24 + V24;
+            const X24 = ceiling(W24, 0.001);
+            
+            // Row 25: Direct query costs
+            const U25 = U7 * (1 - C7);
+            const V25 = V7 * (1 - C8);
+            const W25 = U25 + V25;
+            const X25 = ceiling(W25, 0.001);
+            
+            // Row 26: Storage costs with customer discounts
+            const U26 = U8 * (1 - C7);
+            const V26 = V8 * (1 - C8);
+            const W26 = U26 + V26;
+            const X26 = ceiling(W26, 0.001);
+            
+            // ===== CUSTOMER DIRECT COSTS PER GB (Hidden rows 21-24) =====
+            // These calculate what customer pays per GB for infrastructure
+            
+            // Row 21: License fees  
+            const AC21 = ceiling(U24, 0.001);  // HDX BYOC ingest compute
+            const AD21 = ceiling(V24, 0.001);  // BYOS Shared storage ops
+            const AE21 = ceiling(V24, 0.001);  // BYOS Dedicated storage ops
+            const AF21 = X24;  // BYOS BYOC total
+            
+            // Row 22: Query costs with QPM scaling
+            const AC22 = ceiling(U25, 0.001);  // HDX BYOC query compute
+            const AD22 = ceiling(V25, 0.001);  // BYOS Shared query storage ops
+            const AE22 = ceiling(V25, 0.001);  // BYOS Dedicated query storage ops  
+            const AF22 = X25 * C6 / 100;  // BYOS BYOC query (scaled by QPM)
+            
+            // Row 23: Storage costs with retention
+            const AC23 = 0;  // HDX BYOC (no storage, using HDX)
+            const AD23 = X26 * F6;  // BYOS Shared storage with retention
+            const AE23 = X26 * F6;  // BYOS Dedicated storage with retention
+            const AF23 = X26 * F6;  // BYOS BYOC storage with retention
+            
+            // Row 24: Total per-GB costs customer pays
+            const AC24 = AC21 + AC22 + AC23;
+            const AD24 = AD21 + AD22 + AD23;
+            const AE24 = AE21 + AE22 + AE23;
+            const AF24 = AF21 + AF22 + AF23;
+            
+            // ===== PLATFORM FEES (Hidden row 30) =====
+            
+            const totalGibIngested = F5 * 1024;
+            const totalGibStored = totalGibIngested * retention;
+            
+            // AA30 = V17 + U17 * N22 (Shared platform)
+            const AA30 = V17 + U17 * settings.sharedCoreAmortization;
+            
+            // AB30 = X17 (Dedicated platform)
+            const AB30 = X17;
+            
+            // AC30 = AB30 - AC36 (BYOC platform)
+            // AC36 = CEILING(U23, 10)
+            const AC36 = ceiling(U23, 10);
+            const AC30 = AB30 - AC36;
+            
+            // AD30 = U17 * N22 (BYOS Shared platform)
+            const AD30 = U17 * settings.sharedCoreAmortization;
+            
+            // AE30 = U17 (BYOS Dedicated platform)
+            const AE30 = U17;
+            
+            // AF30 = AE30 - AF36 (BYOS BYOC platform)
+            // AF36 = X23
+            const AF36 = X23;
+            const AF30 = AE30 - AF36;
+            
+            // ===== USAGE COSTS (Hidden row 31) =====
+            
+            // AA31 = AA17 * F5 * 1024
+            const AA31 = AA17 * totalGibIngested;
+            
+            // AB31 same as AA31
+            const AB31 = AB17 * totalGibIngested;
+            
+            // AC31 = AC17 * F5 * 1024
+            const AC31 = AC17 * totalGibIngested;
+            
+            // AD31 = AD17 * F5 * 1024
+            const AD31 = AD17 * totalGibIngested;
+            
+            // AE31 same as AD31
+            const AE31 = AE17 * totalGibIngested;
+            
+            // AF31 = AF17 * F5 * 1024
+            const AF31 = AF17 * totalGibIngested;
+            
+            // ===== TOTALS (Hidden row 32) =====
+            
+            const AA32 = AA30 + AA31;
+            const AB32 = AB30 + AB31;
+            const AC32 = AC30 + AC31;
+            const AD32 = AD30 + AD31;
+            const AE32 = AE30 + AE31;
+            const AF32 = AF30 + AF31;
+            
+            // ===== CLOUD INFRASTRUCTURE COSTS (Hidden row 36-38) =====
+            // These are costs the CUSTOMER pays for cloud infrastructure (not Hydrolix)
+            
+            // Row 36: Platform costs customer pays for BYOC
+            // AC36 already calculated above
+            const AD36 = ceiling(V23, 10);  // BYOS Shared storage platform
+            const AE36 = ceiling(V23, 10);  // BYOS Dedicated storage platform  
+            // AF36 already calculated above
+            
+            // Row 37: Usage costs customer pays
+            const AC37 = AC24 * totalGibIngested;  // HDX BYOC storage ops
+            const AD37 = AD24 * totalGibIngested;  // BYOS Shared storage
+            const AE37 = AE24 * totalGibIngested;  // BYOS Dedicated storage
+            const AF37 = AF24 * totalGibIngested;  // BYOS BYOC storage
+            
+            // Row 38: Total cloud costs customer pays
+            const AC38 = AC36 + AC37;  // HDX BYOC
+            const AD38 = AD36 + AD37;  // BYOS Shared
+            const AE38 = AE36 + AE37;  // BYOS Dedicated
+            const AF38 = AF36 + AF37;  // BYOS BYOC
+            
+            // ===== CLOUD COST BREAKDOWNS (Compute vs Storage) =====
+            
+            // HDX BYOC: Only storage ops (no storage data, using HDX storage)
+            const hdxByocCloudCompute = AC36 + (AC21 + AC22) * totalGibIngested;
+            const hdxByocCloudStorage = 0;  // Using HDX storage
+            
+            // BYOS Shared: Compute platform + storage
+            const byosSharedCloudCompute = 0;  // Compute provided by Hydrolix
+            const byosSharedCloudStorage = AD38;  // Customer provides all storage
+            
+            // BYOS Dedicated: Compute platform + storage
+            const byosDedicatedCloudCompute = 0;  // Compute provided by Hydrolix
+            const byosDedicatedCloudStorage = AE38;  // Customer provides all storage
+            
+            // BYOS BYOC: Compute + Storage
+            const byosByocCloudCompute = AF36 + (ceiling(U24, 0.001) + ceiling(U25, 0.001)) * totalGibIngested;
+            const byosByocCloudStorage = AD23 * totalGibIngested;  // Storage with retention
+            
+            // ===== TOTAL COST OF OWNERSHIP (Hidden row 39) =====
+            // TCO = Hydrolix costs + Cloud infrastructure costs
+            
+            const AA39 = AA32;  // HDX Shared (no cloud costs)
+            const AB39 = AB32;  // HDX Dedicated (no cloud costs)
+            const AC39 = AC32 + AC38;  // HDX BYOC
+            const AD39 = AD32 + AD38;  // BYOS Shared
+            const AE39 = AE32 + AE38;  // BYOS Dedicated
+            const AF39 = AF32 + AF38;  // BYOS BYOC
+            
+            // ===== INFRASTRUCTURE REQUIREMENTS =====
+            
+            // Object Storage (total GiB stored with compression)
+            const objectStorageGiB = totalGibStored * R11;  // After compression
+            
+            // vCPU calculations - EXACT Excel formula from Calculator O18, O19
+            // O18 = Q14 + Q15 + R14*IF(AI7<1,1,AI7) + R15*IF(AI7<1,1,AI7)*C6/100
+            // O19 = O18 * 16
+            // Note: Query infrastructure DOES scale with QPM!
+            
+            const Q14_min = 5;  // Min ingest capacity (nodes)
+            const Q15_min = 2;  // Min query capacity (nodes)
+            const R14_perTibDay = 3.2;  // Ingest nodes per TiB/day
+            const R15_perTibDay = 3.2;  // Query nodes per TiB/day
+            
+            const avgTibPerDay = ingestTB / (365/12);  // AI7 in Excel
+            const tibDayFactor = Math.max(1, avgTibPerDay);  // IF(AI7<1, 1, AI7)
+            
+            // Excel O18 formula: number of 16 vCPU nodes
+            const nodes16vCPU = Q14_min + Q15_min + 
+                               R14_perTibDay * tibDayFactor + 
+                               R15_perTibDay * tibDayFactor * (qpm / 100);  // Query scales with QPM!
+            
+            // Excel O19 formula: total vCPU
+            const vcpuTotal = nodes16vCPU * 16;
+            
+            // Number of 16 vCPU nodes needed (round to nearest whole number for display)
+            const nodesRequired = Math.round(nodes16vCPU);
+            
+            // vCPU breakdown (for display purposes)
+            const vcpuCore = (Q14_min + Q15_min) * 16;  // Base capacity: 7 nodes × 16 = 112 vCPU
+            const vcpuIngest = R14_perTibDay * tibDayFactor * 16;  // Ingest workload in vCPU
+            const vcpuQuery = R15_perTibDay * tibDayFactor * (qpm / 100) * 16;  // Query workload in vCPU (scales with QPM!)
+            
+            // Update infrastructure display
+            const infraStorage = document.getElementById('infra-storage');
+            const infraNodes = document.getElementById('infra-nodes');
+            const infraVCPU = document.getElementById('infra-vcpu');
+            const vcpuCoreElem = document.getElementById('vcpu-core');
+            const vcpuIngestElem = document.getElementById('vcpu-ingest');
+            const vcpuQueryElem = document.getElementById('vcpu-query');
+            
+            if (infraStorage) infraStorage.textContent = objectStorageGiB.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' GiB';
+            if (infraNodes) infraNodes.textContent = nodesRequired.toString();  // Already rounded up
+            if (infraVCPU) infraVCPU.textContent = Math.round(vcpuTotal).toString();
+            if (vcpuCoreElem) vcpuCoreElem.textContent = Math.round(vcpuCore).toString();  // Already in vCPU
+            if (vcpuIngestElem) vcpuIngestElem.textContent = Math.round(vcpuIngest).toString();
+            if (vcpuQueryElem) vcpuQueryElem.textContent = Math.round(vcpuQuery).toString();
+            
+            // ===== UPDATE UI =====
+            
+            
+            // Helper function to safely update element
+            function updateElement(id, value) {
+                const elem = document.getElementById(id);
+                if (elem) {
+                    elem.textContent = value;
+                }
+            }
+            
+            // HDX Storage group
+            updateElement('hdx-shared-platform', '$' + AA30.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-shared-usage', '$' + AA31.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-shared-total', '$' + (AA32 + addOnsCost).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            updateElement('hdx-dedicated-platform', '$' + AB30.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-dedicated-usage', '$' + AB31.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-dedicated-total', '$' + (AB32 + addOnsCost).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            updateElement('hdx-byoc-platform', '$' + AC30.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-byoc-usage', '$' + AC31.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-byoc-total', '$' + (AC32 + addOnsCost).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-byoc-cloud', '$' + AC38.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-byoc-tco', '$' + (AC39 + addOnsCost).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-byoc-cloud-compute', '$' + hdxByocCloudCompute.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-byoc-cloud-storage', '$' + hdxByocCloudStorage.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            // BYOS group
+            updateElement('byos-shared-platform', '$' + AD30.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-shared-usage', '$' + AD31.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-shared-total', '$' + (AD32 + addOnsCost).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-shared-cloud', '$' + AD38.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-shared-tco', '$' + (AD39 + addOnsCost).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-shared-cloud-compute', '$' + byosSharedCloudCompute.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-shared-cloud-storage', '$' + byosSharedCloudStorage.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            updateElement('byos-dedicated-platform', '$' + AE30.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-dedicated-usage', '$' + AE31.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-dedicated-total', '$' + (AE32 + addOnsCost).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-dedicated-cloud', '$' + AE38.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-dedicated-tco', '$' + (AE39 + addOnsCost).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-dedicated-cloud-compute', '$' + byosDedicatedCloudCompute.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-dedicated-cloud-storage', '$' + byosDedicatedCloudStorage.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            updateElement('byos-byoc-platform', '$' + AF30.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-byoc-usage', '$' + AF31.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-byoc-total', '$' + (AF32 + addOnsCost).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-byoc-cloud', '$' + AF38.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-byoc-tco', '$' + (AF39 + addOnsCost).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-byoc-cloud-compute', '$' + byosByocCloudCompute.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-byoc-cloud-storage', '$' + byosByocCloudStorage.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            
+            // ===== UPDATE ADD-ONS DISPLAY IN PRICING CARDS =====
+            
+            const addonsRowIds = [
+                'hdx-shared-addons-row',
+                'hdx-dedicated-addons-row',
+                'hdx-byoc-addons-row',
+                'byos-shared-addons-row',
+                'byos-dedicated-addons-row',
+                'byos-byoc-addons-row'
+            ];
+            
+            const addonsValueIds = [
+                'hdx-shared-addons',
+                'hdx-dedicated-addons',
+                'hdx-byoc-addons',
+                'byos-shared-addons',
+                'byos-dedicated-addons',
+                'byos-byoc-addons'
+            ];
+            
+            if (addOnsCost > 0) {
+                // Show and populate add-ons rows
+                addonsRowIds.forEach(rowId => {
+                    const row = document.getElementById(rowId);
+                    if (row) row.style.display = 'flex';
+                });
+                
+                addonsValueIds.forEach(valueId => {
+                    updateElement(valueId, '$' + addOnsCost.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+                });
+            } else {
+                // Hide add-ons rows when no add-ons
+                addonsRowIds.forEach(rowId => {
+                    const row = document.getElementById(rowId);
+                    if (row) row.style.display = 'none';
+                });
+            }
+            
+            
+            // ===== CALCULATE AND DISPLAY MARGINS =====
+            
+            // Calculate COGS for each option (without margin, with HDX discounts where applicable)
+            // For HDX options: use rows 11-14 values (with HDX discount)
+            const hdxSharedCOGS = (U11 + V11) + (U12 + V12 + U13 + V13 + U14 + V14) * totalGibIngested;
+            const hdxDedicatedCOGS = hdxSharedCOGS;  // Same COGS, different platform fee structure
+            
+            // For HDX BYOC: Hydrolix pays for storage, customer pays for compute
+            // COGS = licensing overhead + storage costs
+            const hdxByocCOGS = (U11 + V11) * 0.15 + (U14 + V14) * totalGibIngested;
+            
+            // For BYOS options: COGS is just compute (customer provides storage)
+            const byosSharedCOGS = (U11 * settings.sharedCoreAmortization) + (U12 + U13) * totalGibIngested;
+            const byosDedicatedCOGS = U11 + (U12 + U13) * totalGibIngested;
+            
+            // For BYOS BYOC: customer pays ALL cloud costs (compute + storage)
+            // COGS is minimal - just licensing overhead
+            const byosByocCOGS = (U11 * settings.sharedCoreAmortization) * 0.15;  // ~15% of platform for licensing
+            
+            // Calculate margins: (Revenue - COGS) / Revenue
+            const marginShared = ((AA32 - hdxSharedCOGS) / AA32) * 100;
+            const marginDedicated = ((AB32 - hdxDedicatedCOGS) / AB32) * 100;
+            const marginHdxByoc = ((AC32 - hdxByocCOGS) / AC32) * 100;
+            const marginByosShared = ((AD32 - byosSharedCOGS) / AD32) * 100;
+            const marginByosDedicated = ((AE32 - byosDedicatedCOGS) / AE32) * 100;
+            const marginByosByoc = ((AF32 - byosByocCOGS) / AF32) * 100;
+            
+            // Helper function to format margin with color coding
+            function formatMargin(margin, targetMargin = 70) {
+                const marginStr = margin.toFixed(1) + '%';
+                const diff = margin - targetMargin;
+                
+                if (diff >= 0) {
+                    return marginStr + ' ✓';  // At or above target
+                } else if (diff >= -5) {
+                    return marginStr + ' ⚠';  // Close to target
+                } else {
+                    return marginStr + ' ✗';  // Below target
+                }
+            }
+            
+            // Update margin displays
+            updateElement('hdx-shared-margin', formatMargin(marginShared));
+            updateElement('hdx-dedicated-margin', formatMargin(marginDedicated));
+            updateElement('hdx-byoc-margin', formatMargin(marginHdxByoc));
+            updateElement('byos-shared-margin', formatMargin(marginByosShared));
+            updateElement('byos-dedicated-margin', formatMargin(marginByosDedicated));
+            updateElement('byos-byoc-margin', formatMargin(marginByosByoc));
+            
+            // Update Revenue and COGS displays
+            updateElement('hdx-shared-revenue', '$' + AA32.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-shared-cogs', '$' + hdxSharedCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            updateElement('hdx-dedicated-revenue', '$' + AB32.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-dedicated-cogs', '$' + hdxDedicatedCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            updateElement('hdx-byoc-revenue', '$' + AC32.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-byoc-cogs', '$' + hdxByocCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            updateElement('byos-shared-revenue', '$' + AD32.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-shared-cogs', '$' + byosSharedCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            updateElement('byos-dedicated-revenue', '$' + AE32.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-dedicated-cogs', '$' + byosDedicatedCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            updateElement('byos-byoc-revenue', '$' + AF32.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-byoc-cogs', '$' + byosByocCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            // Update COGS component breakdowns
+            // HDX options (with HDX discounts applied)
+            const hdxPlatformCOGS = U11 + V11;
+            const hdxIngestCOGS = (U12 + V12) * totalGibIngested;
+            const hdxQueryCOGS = (U13 + V13) * totalGibIngested;
+            const hdxStorageCOGS = (U14 + V14) * totalGibIngested;
+            
+            // HDX Shared breakdown
+            updateElement('hdx-shared-cogs-platform', '$' + hdxPlatformCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-shared-cogs-ingest', '$' + hdxIngestCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-shared-cogs-query', '$' + hdxQueryCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-shared-cogs-storage', '$' + hdxStorageCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            // HDX Dedicated breakdown (same as Shared)
+            updateElement('hdx-dedicated-cogs-platform', '$' + hdxPlatformCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-dedicated-cogs-ingest', '$' + hdxIngestCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-dedicated-cogs-query', '$' + hdxQueryCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-dedicated-cogs-storage', '$' + hdxStorageCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            // HDX BYOC breakdown - Hydrolix pays for storage, customer pays for compute
+            const hdxByocLicensingCOGS = (U11 + V11) * 0.15;
+            updateElement('hdx-byoc-cogs-platform', '$' + hdxByocLicensingCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('hdx-byoc-cogs-ingest', '$0.00');
+            updateElement('hdx-byoc-cogs-query', '$0.00');
+            updateElement('hdx-byoc-cogs-storage', '$' + hdxStorageCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            // BYOS options (compute only, no storage)
+            const byosSharedPlatformCOGS = U11 * settings.sharedCoreAmortization;
+            const byosSharedIngestCOGS = U12 * totalGibIngested;
+            const byosSharedQueryCOGS = U13 * totalGibIngested;
+            
+            const byosDedicatedPlatformCOGS = U11;
+            const byosDedicatedIngestCOGS = U12 * totalGibIngested;
+            const byosDedicatedQueryCOGS = U13 * totalGibIngested;
+            
+            // BYOS Shared breakdown
+            updateElement('byos-shared-cogs-platform', '$' + byosSharedPlatformCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-shared-cogs-ingest', '$' + byosSharedIngestCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-shared-cogs-query', '$' + byosSharedQueryCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            // BYOS Dedicated breakdown
+            updateElement('byos-dedicated-cogs-platform', '$' + byosDedicatedPlatformCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-dedicated-cogs-ingest', '$' + byosDedicatedIngestCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-dedicated-cogs-query', '$' + byosDedicatedQueryCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            
+            // BYOS BYOC breakdown - customer pays ALL infrastructure, we only have licensing overhead
+            const byosByocLicensingCOGS = byosByocCOGS;  // Total licensing overhead
+            updateElement('byos-byoc-cogs-platform', '$' + byosByocLicensingCOGS.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+            updateElement('byos-byoc-cogs-ingest', '$0.00');
+            updateElement('byos-byoc-cogs-query', '$0.00');
+            
+            
+            // ===== CALCULATE AND DISPLAY OVERAGE RATES =====
+            // Overage rate = per-GB rate × (1 + overage inflation)
+            // N19 in Hidden sheet = 0.20 (20% overage inflation)
+            
+            const overageInflation = 0.20;  // Hidden!N19
+            
+            const overageShared = AA17 * (1 + overageInflation);
+            const overageDedicated = AB17 * (1 + overageInflation);
+            const overageHdxByoc = AC17 * (1 + overageInflation);
+            const overageByosShared = AD17 * (1 + overageInflation);
+            const overageByosDedicated = AE17 * (1 + overageInflation);
+            const overageByosByoc = AF17 * (1 + overageInflation);
+            
+            updateElement('hdx-shared-overage', '$' + overageShared.toFixed(2));
+            updateElement('hdx-dedicated-overage', '$' + overageDedicated.toFixed(2));
+            updateElement('hdx-byoc-overage', '$' + overageHdxByoc.toFixed(2));
+            updateElement('byos-shared-overage', '$' + overageByosShared.toFixed(2));
+            updateElement('byos-dedicated-overage', '$' + overageByosDedicated.toFixed(2));
+            updateElement('byos-byoc-overage', '$' + overageByosByoc.toFixed(2));
+            
+            
+            // Apply Akamai restrictions
+            const hdxSharedCard = document.getElementById('card-hdx-shared');
+            const hdxBYOCCard = document.getElementById('card-hdx-byoc');
+            const byosSharedCard = document.getElementById('card-byos-shared');
+            const byosDedicatedCard = document.getElementById('card-byos-dedicated');
+            const byosByocCard = document.getElementById('card-byos-byoc');
+            const akamaiAlert = document.getElementById('akamai-alert');
+            const volumeAlert = document.getElementById('volume-alert');
+            
+            // Check if high volume Akamai deployment
+            const isHighVolumeAkamai = isAkamai && ingestTB > 30;
+            
+            
+            // Reset all restrictions first
+            if (hdxSharedCard) hdxSharedCard.classList.remove('disabled', 'high-volume');
+            if (hdxBYOCCard) hdxBYOCCard.classList.remove('disabled', 'high-volume');
+            if (byosSharedCard) byosSharedCard.classList.remove('disabled', 'high-volume');
+            if (byosDedicatedCard) byosDedicatedCard.classList.remove('disabled', 'high-volume');
+            if (byosByocCard) byosByocCard.classList.remove('disabled', 'high-volume');
+            
+            if (isAkamai) {
+                // Always disable ALL BYOS options for Akamai (customer cannot bring their own storage)
+                if (byosSharedCard) byosSharedCard.classList.add('disabled');
+                if (byosDedicatedCard) byosDedicatedCard.classList.add('disabled');
+                if (byosByocCard) byosByocCard.classList.add('disabled');
+                if (akamaiAlert) akamaiAlert.style.display = 'block';
+                
+                // Additionally disable HDX Shared if >30TB
+                if (isHighVolumeAkamai) {
+                    if (hdxSharedCard) hdxSharedCard.classList.add('disabled', 'high-volume');
+                    if (volumeAlert) volumeAlert.style.display = 'block';
+                } else {
+                    if (volumeAlert) volumeAlert.style.display = 'none';
+                }
+            } else {
+                if (akamaiAlert) akamaiAlert.style.display = 'none';
+                if (volumeAlert) volumeAlert.style.display = 'none';
+            }
+            
+            // ===== DEBUG INFO =====
+            
+            const debugGrid = document.getElementById('debug-grid');
+            if (debugGrid) {
+                debugGrid.innerHTML = `
+                    <div class="debug-item"><span class="debug-label">R11 (compression):</span> <span class="debug-value">${R11.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">V8 (storage $/GB):</span> <span class="debug-value">$${V8.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">X18 (ingest):</span> <span class="debug-value">$${X18.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">X19 (query):</span> <span class="debug-value">$${X19.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">X20 (storage):</span> <span class="debug-value">$${X20.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AA17 (HDX Shared $/GB):</span> <span class="debug-value">$${AA17.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AB17 (HDX Dedicated $/GB):</span> <span class="debug-value">$${AB17.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AC17 (HDX BYOC $/GB):</span> <span class="debug-value">$${AC17.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AD17 (BYOS Shared $/GB):</span> <span class="debug-value">$${AD17.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AE17 (BYOS Dedicated $/GB):</span> <span class="debug-value">$${AE17.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AF17 (BYOS BYOC $/GB):</span> <span class="debug-value">$${AF17.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">Total GB Ingested:</span> <span class="debug-value">${totalGibIngested.toLocaleString()}</span></div>
+                    <div class="debug-item"><span class="debug-label">QPM Multiplier:</span> <span class="debug-value">${(C6/100).toFixed(2)}x</span></div>
+                    <div class="debug-item"><span class="debug-label">Retention Months:</span> <span class="debug-value">${F6}</span></div>
+                    <div class="debug-item"><span class="debug-label">AC24 (HDX BYOC cloud $/GB):</span> <span class="debug-value">$${AC24.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AD24 (BYOS Shared cloud $/GB):</span> <span class="debug-value">$${AD24.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AE24 (BYOS Dedicated cloud $/GB):</span> <span class="debug-value">$${AE24.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AF24 (BYOS BYOC cloud $/GB):</span> <span class="debug-value">$${AF24.toFixed(6)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AC39 (HDX BYOC TCO):</span> <span class="debug-value">$${AC39.toFixed(2)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AD39 (BYOS Shared TCO):</span> <span class="debug-value">$${AD39.toFixed(2)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AE39 (BYOS Dedicated TCO):</span> <span class="debug-value">$${AE39.toFixed(2)}</span></div>
+                    <div class="debug-item"><span class="debug-label">AF39 (BYOS BYOC TCO):</span> <span class="debug-value">$${AF39.toFixed(2)}</span></div>
+                `;
+            }
+            
+            // ===== COMPETITOR COMPARISON =====
+            
+            const millionRows = totalGibIngested * 1024 * 1024 * 1024 / 512 / 1000000;
+            const totalQueries = 730 * 60 * qpm;
+            const totalGibQueried = 5 / 43800 * totalGibIngested * totalQueries;
+            
+            // Update baseline display (BYOS BYOC TCO + add-ons)
+            const hydrolixBaselineTCO = AF39 + addOnsCost;
+            const baselineText = '$' + hydrolixBaselineTCO.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            const baselineNote = addOnsCost > 0 ? ' (includes $' + addOnsCost.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' in add-ons)' : '';
+            const baselineTCOElem = document.getElementById('baseline-tco');
+            if (baselineTCOElem) {
+                baselineTCOElem.innerHTML = baselineText + '<span style="font-size: 0.85em; font-weight: 400; color: rgba(255,255,255,0.8);">' + baselineNote + '</span>';
+            }
+            
+            
+            // Use BYOS BYOC TCO + add-ons as baseline (available for all clouds)
+            calculateCompetitors(totalGibIngested, totalGibStored, millionRows, totalGibQueried, hydrolixBaselineTCO, ingestTB);
+            
+            
+        } catch (error) {
+            alert('Calculation Error: ' + error.message);
+        }
+        }
+        
+        function calculateCompetitors(totalGibIngested, totalGibStored, millionRows, totalGibQueried, hydrolixBYOC, ingestTB) {
+            
+            const competitors = [
+                {
+                    name: 'Coralogix',
+                    tco: 1.13 * totalGibIngested + 0.023 * (totalGibStored / 5)
+                },
+                {
+                    name: 'Datadog',
+                    tco: 0.10 * totalGibIngested + 2.5 * millionRows + 
+                         (ingestTB > 1 ? 0.0525 * (ingestTB - 1) * millionRows : 0)
+                },
+                {
+                    name: 'Dynatrace',
+                    tco: 0.20 * totalGibIngested + (totalGibStored / 1024) * 0.0007 * 365 / 12 + 
+                         0.0035 * totalGibQueried
+                },
+                {
+                    name: 'Elastic',
+                    tco: 0.641 * (totalGibStored / 1024)
+                },
+                {
+                    name: 'Grafana Cloud',
+                    tco: 0.50 * totalGibIngested + 0.023 * (totalGibStored - totalGibIngested)
+                },
+                {
+                    name: 'New Relic',
+                    tco: 0.60 * totalGibIngested + 
+                         (ingestTB > 3 ? 0.05 * (ingestTB - 3) * 1024 : 0)
+                },
+                {
+                    name: 'Snowflake',
+                    tco: 182.5 * (totalGibIngested / ingestTB * 0.8) + 23 * (totalGibStored / 1024)
+                },
+                {
+                    name: 'Splunk',
+                    tco: 80000 / 12 / (100 * 365 / 12) * totalGibIngested
+                },
+                {
+                    name: 'SumoLogic',
+                    tco: 2.57 * (totalGibQueried / 1024)
+                }
+            ];
+            
+            const tbody = document.getElementById('comparison-tbody');
+            if (!tbody) {
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            
+            competitors.forEach(comp => {
+                const costPerGb = comp.tco / totalGibIngested;
+                const multiplier = comp.tco / hydrolixBYOC;
+                
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td class="vendor-name">${comp.name}</td>
+                    <td class="price-cell">$${comp.tco.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
+                    <td>$${costPerGb.toFixed(4)}</td>
+                    <td class="multiplier">${multiplier.toFixed(2)}x</td>
+                `;
+            });
+            
+        }
+        
+        // Save calculator state to URL
+        function saveToURL() {
+            const params = new URLSearchParams();
+            
+            // Customer info
+            params.set('customer', document.getElementById('customerName').value || '');
+            params.set('sfdc', document.getElementById('sfdcLink').value || '');
+            
+            // Configuration
+            params.set('cloud', document.getElementById('cloudProvider').value);
+            params.set('ingest', document.getElementById('ingestTB').value);
+            params.set('retention', document.getElementById('retention').value);
+            params.set('qpm', document.getElementById('qpm').value);
+            params.set('computeDiscount', document.getElementById('computeDiscount').value);
+            params.set('storageDiscount', document.getElementById('storageDiscount').value);
+            
+            // Add-ons
+            params.set('kibana', document.getElementById('hostedKibana').value);
+            params.set('grafana', document.getElementById('enterpriseGrafana').value);
+            params.set('consulting', document.getElementById('consultingHours').value);
+            params.set('events', document.getElementById('premiumEvents').value);
+            
+            const akamaiEAAElem = document.getElementById('akamaiEAA');
+            if (akamaiEAAElem) {
+                params.set('akamaiEAA', akamaiEAAElem.value);
+            }
+            
+            const url = window.location.origin + window.location.pathname + '?' + params.toString();
+            
+            navigator.clipboard.writeText(url).then(() => {
+                alert('✅ Link copied to clipboard!\n\nShare this link to preserve all calculator settings.');
+            }).catch(() => {
+                prompt('Copy this link:', url);
+            });
+        }
+        
+        // Load calculator state from URL
+        function loadFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            
+            if (params.has('customer')) document.getElementById('customerName').value = params.get('customer');
+            if (params.has('sfdc')) document.getElementById('sfdcLink').value = params.get('sfdc');
+            if (params.has('cloud')) document.getElementById('cloudProvider').value = params.get('cloud');
+            if (params.has('ingest')) document.getElementById('ingestTB').value = params.get('ingest');
+            if (params.has('retention')) document.getElementById('retention').value = params.get('retention');
+            if (params.has('qpm')) document.getElementById('qpm').value = params.get('qpm');
+            if (params.has('computeDiscount')) document.getElementById('computeDiscount').value = params.get('computeDiscount');
+            if (params.has('storageDiscount')) document.getElementById('storageDiscount').value = params.get('storageDiscount');
+            if (params.has('kibana')) document.getElementById('hostedKibana').value = params.get('kibana');
+            if (params.has('grafana')) document.getElementById('enterpriseGrafana').value = params.get('grafana');
+            if (params.has('consulting')) document.getElementById('consultingHours').value = params.get('consulting');
+            if (params.has('events')) document.getElementById('premiumEvents').value = params.get('events');
+            if (params.has('akamaiEAA')) document.getElementById('akamaiEAA').value = params.get('akamaiEAA');
+        }
+        
+        // Generate customer quote as PDF
+        function generateQuote() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const customerName = document.getElementById('customerName').value || 'Prospective Customer';
+            const sfdcLink = document.getElementById('sfdcLink').value || '';
+            const cloudProvider = document.getElementById('cloudProvider').value;
+            const ingestTB = document.getElementById('ingestTB').value;
+            const retention = document.getElementById('retention').value;
+            const qpm = document.getElementById('qpm').value;
+            
+            // Get all pricing values
+            const hdxShared = document.getElementById('hdx-shared-total')?.textContent || '$0';
+            const hdxDedicated = document.getElementById('hdx-dedicated-total')?.textContent || '$0';
+            const hdxByoc = document.getElementById('hdx-byoc-tco')?.textContent || '$0';
+            const byosShared = document.getElementById('byos-shared-tco')?.textContent || '$0';
+            const byosDedicated = document.getElementById('byos-dedicated-tco')?.textContent || '$0';
+            const byosByoc = document.getElementById('byos-byoc-tco')?.textContent || '$0';
+            
+            const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            
+            // Page setup
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            let yPos = 20;
+            
+            // Header with gradient effect (using rectangles)
+            doc.setFillColor(0, 51, 102);
+            doc.rect(0, 0, pageWidth, 40, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(24);
+            doc.setFont('helvetica', 'bold');
+            doc.text('HYDROLIX PRICING QUOTE', pageWidth / 2, 20, { align: 'center' });
+            
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Generated on ' + currentDate, pageWidth / 2, 30, { align: 'center' });
+            
+            yPos = 50;
+            
+            // Customer Information
+            doc.setTextColor(0, 51, 102);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Customer Information', 20, yPos);
+            yPos += 8;
+            
+            doc.setFillColor(54, 189, 177);
+            doc.rect(20, yPos - 3, 3, 20, 'F');
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Customer:', 26, yPos);
+            doc.setFont('helvetica', 'normal');
+            doc.text(customerName, 55, yPos);
+            yPos += 6;
+            
+            if (sfdcLink) {
+                doc.setFont('helvetica', 'bold');
+                doc.text('SFDC Opportunity:', 26, yPos);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(0, 0, 255);
+                doc.textWithLink(sfdcLink.substring(0, 60) + (sfdcLink.length > 60 ? '...' : ''), 65, yPos, { url: sfdcLink });
+                doc.setTextColor(0, 0, 0);
+                yPos += 6;
+            }
+            
+            yPos += 10;
+            
+            // Configuration Summary
+            doc.setTextColor(0, 51, 102);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Configuration Summary', 20, yPos);
+            yPos += 8;
+            
+            doc.setFillColor(240, 240, 240);
+            doc.rect(20, yPos - 3, pageWidth - 40, 30, 'F');
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            
+            doc.setFont('helvetica', 'bold');
+            doc.text('Cloud Provider:', 25, yPos);
+            doc.setFont('helvetica', 'normal');
+            doc.text(cloudProvider, 65, yPos);
+            yPos += 6;
+            
+            doc.setFont('helvetica', 'bold');
+            doc.text('Monthly Ingestion:', 25, yPos);
+            doc.setFont('helvetica', 'normal');
+            doc.text(ingestTB + ' TB', 65, yPos);
+            yPos += 6;
+            
+            doc.setFont('helvetica', 'bold');
+            doc.text('Data Retention:', 25, yPos);
+            doc.setFont('helvetica', 'normal');
+            doc.text(retention + ' months', 65, yPos);
+            yPos += 6;
+            
+            doc.setFont('helvetica', 'bold');
+            doc.text('Peak Queries/Min:', 25, yPos);
+            doc.setFont('helvetica', 'normal');
+            doc.text(qpm, 65, yPos);
+            yPos += 15;
+            
+            // Pricing Options Table
+            doc.setTextColor(0, 51, 102);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Pricing Options', 20, yPos);
+            yPos += 8;
+            
+            // Table header
+            doc.setFillColor(0, 51, 102);
+            doc.rect(20, yPos - 5, pageWidth - 40, 10, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Deployment Model', 25, yPos);
+            doc.text('Monthly Cost', 100, yPos);
+            doc.text('Description', 140, yPos);
+            yPos += 8;
+            
+            // Table rows
+            const pricingOptions = [
+                { name: 'HDX Shared', cost: hdxShared, desc: 'Fully managed (shared)' },
+                { name: 'HDX Dedicated', cost: hdxDedicated, desc: 'Fully managed (dedicated)' },
+                { name: 'HDX BYOC', cost: hdxByoc, desc: 'Managed in your cloud' },
+                { name: 'BYOS Shared', cost: byosShared, desc: 'Self-managed (shared)' },
+                { name: 'BYOS Dedicated', cost: byosDedicated, desc: 'Self-managed (dedicated)' },
+                { name: 'BYOS BYOC', cost: byosByoc, desc: 'Full self-service' }
+            ];
+            
+            doc.setTextColor(0, 0, 0);
+            
+            pricingOptions.forEach((option, index) => {
+                if (index % 2 === 0) {
+                    doc.setFillColor(248, 249, 250);
+                    doc.rect(20, yPos - 5, pageWidth - 40, 8, 'F');
+                }
+                
+                doc.setFont('helvetica', 'bold');
+                doc.text(option.name, 25, yPos);
+                
+                doc.setTextColor(54, 189, 177);
+                doc.setFont('helvetica', 'bold');
+                doc.text(option.cost, 100, yPos);
+                
+                doc.setTextColor(0, 0, 0);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                doc.text(option.desc, 140, yPos);
+                doc.setFontSize(10);
+                
+                yPos += 8;
+            });
+            
+            // Footer
+            yPos = pageHeight - 30;
+            doc.setFontSize(9);
+            doc.setTextColor(100, 100, 100);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Hydrolix Inc. | Real-Time Analytics at Petabyte Scale', pageWidth / 2, yPos, { align: 'center' });
+            yPos += 5;
+            doc.setFont('helvetica', 'normal');
+            doc.text('This quote is based on the configuration provided and is subject to final contract terms.', pageWidth / 2, yPos, { align: 'center' });
+            
+            // Save PDF
+            const filename = `Hydrolix_Quote_${customerName.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(filename);
+            
+            alert('✅ PDF Quote generated and downloaded!');
+        }
+
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                loadFromURL();
+                calculate();
+            } catch (error) {
+                // Silent fail
+            }
+        });
+    </script>
+</body>
+</html>
